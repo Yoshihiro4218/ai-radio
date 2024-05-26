@@ -1,28 +1,20 @@
 package com.kadowork.app;
 
 import com.amazonaws.services.lambda.runtime.*;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.*;
-import com.google.gson.*;
 import com.kadowork.app.entity.*;
 import com.theokanning.openai.completion.chat.*;
 import com.theokanning.openai.service.*;
 import org.apache.http.impl.client.*;
+import org.springframework.ai.openai.*;
+import org.springframework.ai.openai.api.*;
+import org.springframework.ai.openai.audio.speech.*;
 import org.springframework.http.*;
 import org.springframework.http.client.*;
 import org.springframework.web.client.*;
-import software.amazon.awssdk.auth.credentials.*;
-import software.amazon.awssdk.enhanced.dynamodb.*;
-import software.amazon.awssdk.regions.*;
-import software.amazon.awssdk.services.dynamodb.*;
 
-import java.io.*;
-import java.net.*;
 import java.time.*;
 import java.util.*;
-import java.util.stream.*;
 
-import static com.kadowork.app.entity.Chat.Role.assistant;
 import static com.kadowork.app.entity.Chat.Role.user;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -80,13 +72,28 @@ public class AiRadio implements RequestHandler<Map<String, Object>, Object> {
                         .typedAt(LocalDateTime.now(ZoneId.of("Asia/Tokyo")).toString())
                         .build();
         chatHistory.add(chat);
-        chatOpenAI(chatHistory);
+        String summary = chatOpenAI(chatHistory);
+
+        // TODO: speech 部分...
+//        OpenAiAudioSpeechOptions speechOptions = OpenAiAudioSpeechOptions.builder()
+//                                                                         .withModel("tts-1")
+//                                                                         .withVoice(OpenAiAudioApi.SpeechRequest.Voice.ALLOY)
+//                                                                         .withResponseFormat(OpenAiAudioApi.SpeechRequest.AudioResponseFormat.MP3)
+//                                                                         .withSpeed(1.0f)
+//                                                                         .build();
+//
+//        var openAiAudioApi = new OpenAiAudioApi(System.getenv("OPENAI_API_KEY"));
+//        var openAiAudioSpeechModel = new OpenAiAudioSpeechClient(openAiAudioApi);
+//        var speechPrompt = new SpeechPrompt("Hello, this is a text-to-speech example.", speechOptions);
+//        SpeechResponse response = openAiAudioSpeechModel.call(speechPrompt);
+//        byte[] responseAsBytes = response.getResult().getOutput();
+
 
         System.out.println("処理終了〜");
         return null;
     }
 
-    private void chatOpenAI(List<Chat> messages) {
+    private String chatOpenAI(List<Chat> messages) {
         final var service = new OpenAiService(OPENAI_TOKEN, Duration.ofSeconds(OPENAPI_DURATION_SECONDS));
         System.out.println("\nCreating completion...");
         List<ChatMessage> chatMessages = new LinkedList<>();
@@ -106,6 +113,7 @@ public class AiRadio implements RequestHandler<Map<String, Object>, Object> {
         for (final ChatCompletionChoice choice : result.getChoices()) {
             System.out.println(choice);
         }
+        return result.getChoices().get(0).getMessage().getContent();
     }
 
     private ResponseEntity<String> postLineNotify(String bodyJson) {
